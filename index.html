@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House Price Predictor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .form-label {
+            @apply block text-gray-400 text-sm font-medium mb-2;
+        }
+        .form-input {
+            @apply w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200;
+            color-scheme: dark; /* Hint for browsers on how to style UI elements */
+        }
+        .form-input::placeholder {
+            @apply text-gray-500;
+        }
+        .btn-predict {
+            @apply w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105;
+        }
+
+        /* --- FIX FOR AUTOFILL (More Aggressive) --- */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px #1f2937 inset !important; /* bg-gray-800 */
+            -webkit-text-fill-color: white !important;
+            /* This is a hack to prevent the browser from changing the background */
+            transition: background-color 5000s ease-in-out 0s;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-4xl bg-gray-800 bg-opacity-50 backdrop-blur-sm rounded-2xl shadow-2xl p-8 md:p-12 border border-gray-700">
+        
+        <div class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-2">House Price Predictor</h1>
+            <p class="text-gray-400 text-lg">Enter the property details to estimate its market value.</p>
+        </div>
+
+        <!-- The form now has IDs that match the model's features -->
+        <form id="prediction-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label for="GrLivArea" class="form-label">Living Area (sq. ft.)</label>
+                <input type="number" id="GrLivArea" class="form-input" placeholder="e.g., 1800" required>
+            </div>
+            <div>
+                <label for="OverallQual" class="form-label">Overall Quality (1-10)</label>
+                <input type="number" id="OverallQual" class="form-input" placeholder="e.g., 7" min="1" max="10" required>
+            </div>
+            <div>
+                <label for="GarageCars" class="form-label">Garage Capacity (cars)</label>
+                <input type="number" id="GarageCars" class="form-input" placeholder="e.g., 2" required>
+            </div>
+            <div>
+                <label for="TotalBsmtSF" class="form-label">Basement Area (sq. ft.)</label>
+                <input type="number" id="TotalBsmtSF" class="form-input" placeholder="e.g., 800" required>
+            </div>
+            <div>
+                <label for="FullBath" class="form-label">Number of Bathrooms</label>
+                <input type="number" id="FullBath" class="form-input" placeholder="e.g., 2" required>
+            </div>
+            <div>
+                <label for="YearBuilt" class="form-label">Year Built</label>
+                <input type="number" id="YearBuilt" class="form-input" placeholder="e.g., 1995" required>
+            </div>
+            
+            <div class="md:col-span-2 mt-6">
+                <button type="submit" class="btn-predict">
+                    Predict Price
+                </button>
+            </div>
+        </form>
+
+        <!-- Prediction Result -->
+        <div id="result-container" class="mt-10 text-center hidden">
+            <p class="text-gray-400 text-lg mb-2">Estimated Market Value</p>
+            <p id="predicted-price" class="text-4xl md:text-5xl font-bold text-blue-400"></p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('prediction-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            // --- 1. Collect Data From Form ---
+            // The names here (e.g., 'OverallQual') MUST match the column names
+            // your Flask API expects.
+            const formData = {
+                'OverallQual': parseInt(document.getElementById('OverallQual').value),
+                'GrLivArea': parseInt(document.getElementById('GrLivArea').value),
+                'GarageCars': parseInt(document.getElementById('GarageCars').value),
+                'TotalBsmtSF': parseInt(document.getElementById('TotalBsmtSF').value),
+                'FullBath': parseInt(document.getElementById('FullBath').value),
+                'YearBuilt': parseInt(document.getElementById('YearBuilt').value)
+            };
+
+            // --- 2. Send Data to Flask API ---
+            // This is the core of the connection.
+            // We are sending a POST request to our running Flask server.
+            fetch('http://127.0.0.1:5000/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                // Convert the JavaScript object to a JSON string
+                body: JSON.stringify([formData]) // API expects a list of records
+            })
+            .then(response => response.json()) // Parse the JSON response from the API
+            .then(data => {
+                // --- 3. Display the Result ---
+                const predictedPrice = data.prediction;
+                const resultContainer = document.getElementById('result-container');
+                const priceElement = document.getElementById('predicted-price');
+                
+                priceElement.textContent = `$${predictedPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+                resultContainer.classList.remove('hidden');
+            })
+            .catch(error => {
+                // Handle any errors that occur during the API call
+                console.error('Error:', error);
+                // Replaced alert with a more user-friendly message display
+                const resultContainer = document.getElementById('result-container');
+                const priceElement = document.getElementById('predicted-price');
+                priceElement.textContent = "Prediction Error";
+                resultContainer.classList.remove('hidden');
+            });
+        });
+    </script>
+</body>
+</html>
