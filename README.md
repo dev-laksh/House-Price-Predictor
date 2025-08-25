@@ -24,7 +24,7 @@ Deployment: The model is serialized using joblib and served locally.
 🚀 How to Run
 Clone the repository:
 
-git clone https://github.com/your-username/house-price-predictor.git
+git clone https://github.com/dev-laksh/house-price-predictor.git
 cd house-price-predictor
 
 Install dependencies:
